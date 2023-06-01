@@ -1,74 +1,11 @@
-from contextlib import contextmanager
-from sqlalchemy import create_engine
-from sqlalchemy.types import BIGINT, DATE
-from typing import Iterator, Optional, Sequence, Callable
-
 from dagster import (
-	op,
-	job,
 	asset,
-	ConfigurableResource,
-	Config,
-	RunConfig,
-	get_dagster_logger,
 	Output
 )
-import os
-import datetime
 import pandas as pd
 from pandas import json_normalize
 
-@contextmanager
-def connect_pg(url) -> Iterator:
-	conn = None
-	try:
-		conn = create_engine(url).connect()
-		yield conn
-	finally:
-		if conn:
-			conn.close()
-
-
-class PostgresResource(ConfigurableResource):
-	url: str = os.getenv("DATABASE_URL")
-
-	def get_client(self):
-		return connect_pg(self.url)
-
-	def get_latest_row(self, table_name: str):
-		latest_row = 0
-		with connect_pg(self.url) as con:
-			result = con.execute(
-				f"SELECT MAX(last_row) AS num_row FROM {table_name}_metadata"
-			)
-			row = result.fetchone()
-			if row is not None and row["num_row"] is not None:
-				latest_row = row["num_row"]
-		return latest_row
-
-	def update_latest_row(self, table_name: str, latest_row: int):
-		with connect_pg(self.url) as con:
-			date = datetime.datetime.today().strftime("%Y-%m-%d %H:%M:%S")
-			query = (
-				f"INSERT INTO {table_name}_metadata (last_row, date) VALUES (%s, %s)"
-			)
-			con.execute(query, (latest_row, date))
-
-	def execute_query(self, sql: str):
-		with connect_pg(self.url) as con:
-			return pd.read_sql_query(sql, con=con)
-
-	def insert_df(self, df: pd.DataFrame, table_name, schema=None) -> int:
-		with connect_pg(self.url) as con:
-			return df.to_sql(
-				table_name,
-				con=con,
-				if_exists="append",
-				index=False,
-				chunksize=1000,
-				method="multi",
-			)
-
+from .resources import PostgresResource
 
 @asset
 def CaddyLogsParsing(context, postgres: PostgresResource):

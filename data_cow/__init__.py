@@ -1,12 +1,3 @@
-# from dagster import Definitions, EnvVar
-# from .assets import fake, postgres_io_manager, read_asset, latest_row
-
-# defs = Definitions(
-#     assets=[read_asset, latest_row],
-#     jobs=[fake],
-#     resources={"pg_io_manager": postgres_io_manager()},
-# )
-
 from dagster import (
     AssetSelection,
     Definitions,
@@ -16,6 +7,7 @@ from dagster import (
 )
 
 from . import assets
+from .resources import PostgresResource
 
 all_assets = load_assets_from_modules([assets])
 
@@ -29,5 +21,5 @@ logs_schedule = ScheduleDefinition(
 defs = Definitions(
     assets=all_assets,
     schedules=[logs_schedule],
-    resources={"postgres": assets.PostgresResource()},
+    resources={"postgres": PostgresResource()},
 )
