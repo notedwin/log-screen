@@ -1,0 +1,69 @@
+scheduler:
+  module: dagster.core.scheduler
+  class: DagsterDaemonScheduler
+
+run_coordinator:
+  module: dagster.core.run_coordinator
+  class: QueuedRunCoordinator
+# need the env vars here as well because the execution will launch 
+# a new containter that cant use .env file from docker-compose :o
+run_launcher:
+  module: dagster_docker
+  class: DockerRunLauncher
+  config:
+    env_vars:
+      - DATABASE_URL
+      - DAGSTER_PG_USERNAME
+      - DAGSTER_PG_PASSWORD
+      - DAGSTER_PG_HOST
+      - DAGSTER_PG_DB
+    network: bridge_dagster
+    container_kwargs:
+      volumes: 
+        - /var/run/docker.sock:/var/run/docker.sock
+        - /tmp/io_manager_storage:/tmp/io_manager_storage
+
+run_storage:
+  module: dagster_postgres.run_storage
+  class: PostgresRunStorage
+  config:
+    postgres_db:
+      username:
+        env: DAGSTER_PG_USERNAME
+      password:
+        env: DAGSTER_PG_PASSWORD
+      hostname:
+        env: DAGSTER_PG_HOST
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432
+
+schedule_storage:
+  module: dagster_postgres.schedule_storage
+  class: PostgresScheduleStorage
+  config:
+    postgres_db:
+      username:
+        env: DAGSTER_PG_USERNAME
+      password:
+        env: DAGSTER_PG_PASSWORD
+      hostname:
+        env: DAGSTER_PG_HOST
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432
+
+event_log_storage:
+  module: dagster_postgres.event_log
+  class: PostgresEventLogStorage
+  config:
+    postgres_db:
+      username:
+        env: DAGSTER_PG_USERNAME
+      password:
+        env: DAGSTER_PG_PASSWORD
+      hostname:
+        env: DAGSTER_PG_HOST
+      db_name:
+        env: DAGSTER_PG_DB
+      port: 5432

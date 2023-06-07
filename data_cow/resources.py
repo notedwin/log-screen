@@ -48,8 +48,9 @@ class PostgresResource(ConfigurableResource):
 			return pd.read_sql_query(sql, con=con)
 
 	def insert_df(self, df: pd.DataFrame, table_name, schema=None) -> int:
+		num_rows = 0
 		with connect_pg(self.url) as con:
-			return df.to_sql(
+			num_rows = df.to_sql(
 				table_name,
 				con=con,
 				if_exists="append",
@@ -57,3 +58,4 @@ class PostgresResource(ConfigurableResource):
 				chunksize=1000,
 				method="multi",
 			)
+		return num_rows

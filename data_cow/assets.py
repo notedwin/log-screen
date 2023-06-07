@@ -42,14 +42,15 @@ def CaddyLogsParsing(context, postgres: PostgresResource):
 	normal_df = normal_df.drop(columns=[json_column])
 	row_inserted = postgres.insert_df(normal_df, table_name)
 	context.log.info(f"Inserted {row_inserted} rows into {table_name} table")
-	last_row = raw_data["id"].max() if raw_data.shape[0] > 0 else 0
-	postgres.update_latest_row(table_name, int(last_row))
+	new_last_row = raw_data["id"].max() if raw_data.shape[0] > 0 else 0
+	postgres.update_latest_row(table_name, int(new_last_row))
 	return Output(
-		normal_df[:5],
+		None,
 		metadata={
 			"Table Modified": table_name,
+			"Rows Processed": max(int(new_last_row),last_row)-last_row,
 			"Rows Inserted": row_inserted,
-			"Last Row": last_row
+			"Last Row": int(new_last_row)
 		}
 	)
 	

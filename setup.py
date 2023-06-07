@@ -5,8 +5,9 @@ setup(
     packages=find_packages(exclude=["data_cow_tests"]),
     install_requires=[
         "dagster",
-        "dagster-cloud",
         "dagster-postgres",
+        "pandas",
+        "sqlalchemy",
     ],
     extras_require={"dev": ["dagit", "pytest"]},
 )
