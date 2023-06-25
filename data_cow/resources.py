@@ -47,10 +47,9 @@ class PostgresResource(ConfigurableResource):
 		with connect_pg(self.url) as con:
 			return pd.read_sql_query(sql, con=con)
 
-	def insert_df(self, df: pd.DataFrame, table_name, schema=None) -> int:
-		num_rows = 0
+	def insert_df(self, df: pd.DataFrame, table_name, schema=None):
 		with connect_pg(self.url) as con:
-			num_rows = df.to_sql(
+			df.to_sql(
 				table_name,
 				con=con,
 				if_exists="append",
@@ -58,4 +57,9 @@ class PostgresResource(ConfigurableResource):
 				chunksize=1000,
 				method="multi",
 			)
-		return num_rows
+
+	def insert_df_update(self, df: pd.DataFrame, table_name, schema=None) -> int:
+		self.insert_df(df, table_name)
+		last_processed = df["id"].max() if df.shape[0] > 0 else 0
+		self.update_latest_row(table_name, int(last_processed))
+		return int(last_processed)

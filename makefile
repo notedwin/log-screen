@@ -13,3 +13,9 @@ first-run:
 deploy:
 	docker context use prod
 	docker-compose up -d --no-deps --build dagster_user_code
+	docker-compose up -d --no-deps --build dagster_daemon
+	docker-compose up -d --no-deps --build dagit
+
+rm:
+	docker context use prod
+	docker-compose down
