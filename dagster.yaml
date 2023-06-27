@@ -12,6 +12,7 @@ run_launcher:
   class: DockerRunLauncher
   config:
     env_vars:
+      - MAC_HOST
       - DATABASE_URL
       - DAGSTER_PG_USERNAME
       - DAGSTER_PG_PASSWORD
@@ -22,6 +23,7 @@ run_launcher:
       volumes: 
         - /var/run/docker.sock:/var/run/docker.sock
         - /tmp/io_manager_storage:/tmp/io_manager_storage
+      auto_remove: true
 
 run_storage:
   module: dagster_postgres.run_storage

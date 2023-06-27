@@ -5,7 +5,12 @@ RUN pip install \
     dagster-postgres \
     dagster-docker \
     pandas \
-    sqlalchemy
+    sqlalchemy==1.4.48 \
+    fabric
+
+# fabric sucks so abd
+
+# sqlite3 is include in std lib
 
 ENV DAGSTER_HOME=/opt/dagster/app
 

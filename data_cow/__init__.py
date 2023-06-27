@@ -15,7 +15,7 @@ logs = define_asset_job("logs", selection=AssetSelection.all())
 
 logs_schedule = ScheduleDefinition(
     job=logs,
-    cron_schedule="0 * * * *",  # every hour
+    cron_schedule="0 10,22 * * *",  # every hour
 )
 
 defs = Definitions(
