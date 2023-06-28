@@ -5,7 +5,7 @@ from dagster import (
 import pandas as pd
 from pandas import json_normalize
 
-from .resources import PostgresResource
+from .resources import PostgresResource, RemoteSQLiteResource
 
 @asset
 def CaddyLogsParsing(context, postgres: PostgresResource):
@@ -60,40 +60,77 @@ def CaddyLogsParsing(context, postgres: PostgresResource):
 		}
 	)
 
+
 @asset
-def ActivityWatch2Postgres(context, postgres: PostgresResource):
-	from fabric import Connection
-	from paramiko import RSAKey
-	from os import getenv
-	from sqlite3 import connect
+def IP_data(context, postgres: PostgresResource, CaddyLogsParsing):
+	import requests
+	import time
+	df = postgres.execute_query("""
+	SELECT DISTINCT SUBSTR("request.headers.Cf-Connecting-Ip", 2, LENGTH("request.headers.Cf-Connecting-Ip") - 2) AS IP FROM caddy_fct
+    EXCEPT
+    SELECT DISTINCT query FROM ip_data
+	""")  # noqa: E501
+	context.log.info(f"Found {df.shape[0]} new IPs")
+	partitions = [df[i:i + 100] for i in range(0, df.shape[0], 100)]
+	context.log.info(f"Split into {len(partitions)} partitions")
+	for partition in partitions:
+		partition = partition.dropna()
 
+		json_data = partition["ip"].to_json(orient="values")
+		context.log.info(json_data)
+		context.log.info(f"Sending {len(partition)} IPs to API")
+		response = requests.post("http://ip-api.com/batch/", data=json_data, timeout=12)
+		context.log.info(f"status code: {response.status_code}")
+		if response.status_code == 200:
+			context.log.info("Got response from API")
+			data = pd.DataFrame(response.json())
+			# remove message column
+			if "message" in data.columns:
+				data = data.drop(columns=["message"])
+
+			postgres.insert_df(data, "ip_data")
+			context.log.info(f"Inserted {data.shape[0]} rows")
+			time.sleep(1)
+
+	return Output(
+		None,
+		metadata={
+			"Table Modified": "ip_data",
+			"Num Rows Inserted": int(df.shape[0]),
+		}
+	)
+
+@asset
+def aw2Postgres(context, postgres: PostgresResource, activitywatch: RemoteSQLiteResource):
 	table_name = "eventmodel"
-	# when adding new env, add to dagster.yaml too
-	host = getenv("MAC_HOST")
-	path = "/Users/edwinzamudio/Library/Application Support/activitywatch/aw-server/peewee-sqlite.v2.db"
-
-	# paramiko needs password or pkey, but we are using tail scale ssh so use random key
-	with Connection(host, connect_kwargs={"pkey": RSAKey.generate(2048)}) as c:
-		result = c.get(path, "./aw.db")
-		print("Uploaded {0.local} to {0.remote}".format(result))
 	
-	sqlite = connect("./aw.db")
 	last_row = postgres.get_latest_row(table_name)
-	context.log.info(f"latest row:{last_row}")
-	sql = f"SELECT * FROM {table_name} WHERE id > {last_row}"
-	data = pd.read_sql_query(sql, sqlite)
-	context.log.info(f"Read {data.shape[0]} rows from raw table")
-	last_processed = postgres.insert_df_update(data, table_name)
-	context.log.info(f"Last row processed: {last_processed}")
+	df = activitywatch.execute_query(f"SELECT * FROM {table_name} WHERE id > {last_row}")
+	context.log.info(f"Read {df.shape[0]} rows from raw table")
+	last_processed = postgres.insert_df_update(df, table_name)
 
 	return Output(
 		None,
 		metadata={
 			"Table Modified": table_name,
 			"Last row Processed": last_processed,
-			"Num Rows Inserted": int(data.shape[0]),
+			"Num Rows Inserted": int(df.shape[0]),
 		}
 	)
 
-	# some things to do is to make some test enviroment resources
-	# Only parsing the data we want to and make a parition
+@asset
+def st2Postgres(context, postgres: PostgresResource, screentime: RemoteSQLiteResource):
+	table_name = "zobject"
+	last_row = postgres.get_latest_row(table_name)
+	df = screentime.execute_query(f"SELECT * FROM {table_name} WHERE Z_PK > {last_row}")
+	context.log.info(f"Read {df.shape[0]} rows from raw table")
+	last_processed = postgres.insert_df_update(df, table_name, pk="Z_PK")
+
+	return Output(
+		None,
+		metadata={
+			"Table Modified": table_name,
+			"Last row Processed": last_processed,
+			"Num Rows Inserted": int(df.shape[0]),
+		}
+	)
