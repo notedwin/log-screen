@@ -1,3 +1,5 @@
+Deprecated Dagster and moved code into [ScreenThyme](https://github.com/notedwin/screen_thyme) and [manzanahealth](https://github.com/notedwin/manzana-health).
+
 # Dagster Postgres
 
 This is a [Dagster](https://dagster.io/) project scaffolded with [`dagster project scaffold`](https://docs.dagster.io/getting-started/create-new-project).
@@ -46,3 +48,4 @@ Once your Dagster Daemon is running, you can start turning on schedules and sens
 The easiest way to deploy your Dagster project is to use Dagster Cloud.
 
 Check out the [Dagster Cloud Documentation](https://docs.dagster.cloud) to learn more.
+https://github.com/notedwin/screen_thyme
